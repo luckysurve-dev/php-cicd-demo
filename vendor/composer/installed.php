@@ -3,7 +3,7 @@
         'name' => 'learner/php-cicd-demo',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => 'a42e03a26daaa746465f453bc57639d25d1e135d',
+        'reference' => 'f3a365ffc1cfd0d9bfb529105cf962487c1b90f7',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'learner/php-cicd-demo' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => 'a42e03a26daaa746465f453bc57639d25d1e135d',
+            'reference' => 'f3a365ffc1cfd0d9bfb529105cf962487c1b90f7',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
