@@ -1,0 +1,46 @@
+
+name: SonarQube Code Analysis
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+      - master
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  sonarqube:
+    name: PHP SonarQube Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout repository
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Step 2: Validate configuration
+      - name: Validate Sonar Configuration
+        run: |
+          test -f sonar-project.properties
+          test -d src
+          test -d public
+          test -d tests
+
+      # Step 3: Run SonarQube analysis
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
