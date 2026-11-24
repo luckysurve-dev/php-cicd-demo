@@ -1,0 +1,80 @@
+# CONTINUOUS DELIVERY / DEPLOYMENT
+# Runs only after code lands on main (or when you push a version tag).
+# Step 1: build a Docker image and publish it to GitHub Container Registry (GHCR).
+# Step 2: deploy that image to a server over SSH (optional, enable when ready).
+name: CD
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  workflow_dispatch:   # lets you run it manually from the Actions tab
+
+permissions:
+  contents: read
+  packages: write      # needed to push to ghcr.io
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  build-and-push:
+    name: Build and push Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha
+            type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: APP_VERSION=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to server
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    # Turn this job on by creating a repository VARIABLE named DEPLOY_ENABLED = true
+    # (Settings > Secrets and variables > Actions > Variables)
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    # An "environment" gives you a deployment history and optional manual approval
+    environment:
+      name: production
+      url: http://${{ secrets.SSH_HOST }}
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker pull ${{ env.IMAGE_NAME }}:latest
+            docker stop php-cicd-demo || true
+            docker rm php-cicd-demo || true
+            docker run -d --name php-cicd-demo --restart unless-stopped -p 80:80 ${{ env.IMAGE_NAME }}:latest
